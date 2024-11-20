@@ -46,9 +46,11 @@ to8b = lambda x : (255*np.clip(x.cpu().numpy(),0,1)).astype(np.uint8)
 def render_set(model_path, name, iteration, views, gaussians, pipeline, background, cam_type):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
     gts_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt")
+    pcs_path = os.path.join(model_path, name, "ours_{}".format(iteration), "pcs")
 
     makedirs(render_path, exist_ok=True)
     makedirs(gts_path, exist_ok=True)
+    makedirs(pcs_path, exist_ok=True)
     render_images = []
     gt_list = []
     render_list = []
@@ -56,9 +58,12 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
         if idx == 0:time1 = time()
         
-        rendering = render(view, gaussians, pipeline, background,cam_type=cam_type)["render"]
+        rendering_vars = render(view, gaussians, pipeline, background,cam_type=cam_type)
+        rendering = rendering_vars["render"]
+        new_pc = rendering_vars['deformed_pc']
         render_images.append(to8b(rendering).transpose(1,2,0))
         render_list.append(rendering)
+        new_pc.save_ply(os.path.join(pcs_path, '{0:05d}'.format(idx) + ".png"))
         if name in ["train", "test"]:
             if cam_type != "PanopticSports":
                 gt = view.original_image[0:3, :, :]
